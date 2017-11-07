@@ -48,18 +48,18 @@ test('bind non existing key', t => {
   t.is(err.message, `VuexFire: cannot bind undefined property 'foo'. Define it on the state first.`)
 })
 
-test('unbind non existing key', t => {
-  const err = t.throws(() => t.context.unbind('options'))
-  t.is(err.message, `VuexFire: cannot unbind 'options' because it wasn't bound.`)
-})
+// test('unbind non existing key', t => {
+//   const err = t.throws(() => t.context.unbind('options'))
+//   t.is(err.message, `VuexFire: cannot unbind 'options' because it wasn't bound.`)
+// })
 
-test('unbind twice', t => {
-  t.notThrows(() => {
-    t.context.bind('options', t.context.ref)
-    t.context.unbind('options')
-  })
-  const err = t.throws(() => {
-    t.context.unbind('options')
-  })
-  t.is(err.message, `VuexFire: cannot unbind 'options' because it wasn't bound.`)
-})
+// test('unbind twice', t => {
+//   t.notThrows(() => {
+//     t.context.bind('options', t.context.ref)
+//     t.context.unbind('options')
+//   })
+//   const err = t.throws(() => {
+//     t.context.unbind('options')
+//   })
+//   t.is(err.message, `VuexFire: cannot unbind 'options' because it wasn't bound.`)
+// })
