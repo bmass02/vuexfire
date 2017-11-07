@@ -23,11 +23,24 @@ export declare namespace VuexFire {
          */
         wait?: boolean;
     }
+
+    interface FirestoreBindOptions extends BindOptions {
+        /**
+         * Should Watcher receive events for Metadata changes. Defaults to true.
+         */
+        includeMetadataChanges?: boolean;
+    }
+
     interface ActionContext<S, R> extends Vuex.ActionContext<S, R> {
         /**
-         * Binds a firebase reference to a property in the state. If there was already another reference bound to the same property, it unbinds it first.
+         * Binds a Firebase Reference to a property in the state. If there was already another reference bound to the same property, it unbinds it first.
          */
         bindFirebaseRef: (key: string, source: firebase.database.Reference | firebase.database.Query, options?: BindOptions) => void;
+
+        /**
+         * Binds a Firestore Reference to a property in the state. If there was already another reference bound to the same property, it unbinds it first.
+         */
+        bindFirestoreRef: (key: string, source: firebase.firestore.DocumentReference | firebase.firestore.CollectionReference | firebase.firestore.Query, options?: FirestoreBindOptions) => void;
 
         /**
          * Unbinds a bound firebase reference to a given property in the state.
