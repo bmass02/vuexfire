@@ -48,3 +48,35 @@ export function createRecord (snapshot) {
   res['.key'] = getKey(snapshot)
   return res
 }
+
+/**
+ * Convert Firestore DocumentSnapshot into a bindable data record.
+ *
+ * @param {DocumentSnapshot} doc
+ * @return {Object}
+ */
+export function createRecordFromDoc (doc) {
+  var data = doc.data()
+  data['.id'] = doc.id
+  return data
+}
+
+/**
+ * Tests if source is a Firestore DocumentReference
+ *
+ * @param {DocumentReference|CollectionReference|Query} source
+ * @return {boolean}
+ */
+export function isFirestoreDoc (source) {
+  return 'collection' in source
+}
+
+/**
+ * Tests if source is a Firestore CollectionReference
+ *
+ * @param {DocumentReference|CollectionReference|Query} source
+ * @return {boolean}
+ */
+export function isFirestoreCollection (source) {
+  return 'doc' in source && typeof source.doc === 'function'
+}
