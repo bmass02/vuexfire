@@ -75,6 +75,35 @@ function createRecord (snapshot) {
   return res
 }
 
+/**
+ * Convert Firestore DocumentSnapshot into a bindable data record.
+ *
+ * @param {DocumentSnapshot} doc
+ * @return {Object}
+ */
+function createRecordFromDoc (doc) {
+  var data = doc.data();
+  data['.id'] = doc.id;
+  return data
+}
+
+/**
+ * Tests if source is a Firestore DocumentReference
+ *
+ * @param {DocumentReference|CollectionReference|Query} source
+ * @return {boolean}
+ */
+function isFirestoreDoc (source) {
+  return 'collection' in source
+}
+
+/**
+ * Tests if source is a Firestore CollectionReference
+ *
+ * @param {DocumentReference|CollectionReference|Query} source
+ * @return {boolean}
+ */
+
 var VUEXFIRE_OBJECT_VALUE = 'vuexfire/OBJECT_VALUE';
 var VUEXFIRE_ARRAY_INITIALIZE = 'VUEXFIRE_ARRAY_INITIALIZE';
 var VUEXFIRE_ARRAY_ADD = 'vuexfire/ARRAY_ADD';
@@ -141,17 +170,196 @@ mutations[VUEXFIRE_ARRAY_REMOVE] = function (state, ref) {
     array.splice(index, 1);
   };
 
-var firebaseMutations = {};
+// Firebase binding
+var stateNamespaces = new WeakMap();
 
-Object.keys(types).forEach(function (key) {
-  // the { commit, state, type, ...payload } syntax is not supported by buble...
-  var type = types[key];
-  firebaseMutations[type] = function (_, context) {
-    mutations[type](context.state, context);
+function FirestoreBinding (unsubscriber) {
+  this.unbind = unsubscriber;
+}
+
+function RTDBBinding (source) {
+  var this$1 = this;
+
+  this.listeners = {};
+  this.unbind = function () {
+    for (var event in this$1.listeners) {
+      source.off(event, this$1.listeners[event]);
+    }
   };
-});
+  this.addListeners = function (listeners) {
+    Object.assign(this$1.listeners, listeners);
+  };
+}
+
+function BindingDictionary () {
+  var this$1 = this;
+
+  this.add = function (ref) {
+    var commit = ref.commit;
+    var key = ref.key;
+    var binding = ref.binding;
+
+    this$1.delete({ commit: commit, key: key });
+    var stateNamespace = this$1.get({ commit: commit });
+    stateNamespace[key] = binding;
+  };
+
+  this.delete = function (ref) {
+    var commit = ref.commit;
+    var key = ref.key;
+
+    var stateNamespace = this$1.get({ commit: commit });
+    var binding = stateNamespace[key];
+    if (binding) {
+      binding.unbind();
+      delete stateNamespace[key];
+    }
+  };
+
+  this.get = function (ref) {
+    var commit = ref.commit;
+
+    var stateNamespace = stateNamespaces.get(commit);
+    if (!stateNamespace) {
+      stateNamespace = Object.create(null);
+      stateNamespaces.set(commit, stateNamespace);
+    }
+
+    return stateNamespace
+  };
+}
+
+var bindings = new BindingDictionary();
 
 var commitOptions = { root: true };
+
+function bindCollectionOrQuery (ref) {
+  var key = ref.key;
+  var source = ref.source;
+  var onErrorCallback = ref.onErrorCallback;
+  var wait = ref.wait;
+  var commit = ref.commit;
+  var state = ref.state;
+  var array = [];
+  var initializeArray = function () {
+    commit(VUEXFIRE_ARRAY_INITIALIZE, {
+      type: VUEXFIRE_ARRAY_INITIALIZE,
+      state: state,
+      key: key,
+      value: array,
+    }, commitOptions);
+  };
+
+  if (!wait) {
+    initializeArray();
+  } else {
+    source.get().then(initializeArray);
+  }
+
+  return source.onSnapshot(function (snapshot) {
+    snapshot.docChanges.forEach(function (change) {
+      switch (change.type) {
+        case 'added': {
+          commit(VUEXFIRE_ARRAY_ADD, {
+            type: VUEXFIRE_ARRAY_ADD,
+            state: state,
+            key: key,
+            index: change.newIndex,
+            array: wait && array,
+            record: createRecordFromDoc(change.doc),
+          }, commitOptions);
+          break
+        }
+        case 'modified': {
+          var record = createRecordFromDoc(change.doc);
+          commit(VUEXFIRE_ARRAY_CHANGE, {
+            type: VUEXFIRE_ARRAY_CHANGE,
+            state: state,
+            key: key,
+            index: change.oldIndex,
+            array: wait && array,
+            record: record,
+          }, commitOptions);
+
+          if (change.newIndex !== change.oldIndex) {
+            commit(VUEXFIRE_ARRAY_MOVE, {
+              type: VUEXFIRE_ARRAY_MOVE,
+              state: state,
+              key: key,
+              index: change.oldIndex,
+              newIndex: change.newIndex,
+              array: wait && array,
+              record: record,
+            }, commitOptions);
+          }
+          break
+        }
+        case 'removed': {
+          commit(VUEXFIRE_ARRAY_REMOVE, {
+            type: VUEXFIRE_ARRAY_REMOVE,
+            state: state,
+            key: key,
+            index: change.oldIndex,
+            array: wait && array,
+          }, commitOptions);
+          break
+        }
+      }
+    });
+  }, onErrorCallback)
+}
+
+function bindDoc (ref) {
+  var key = ref.key;
+  var source = ref.source;
+  var onErrorCallback = ref.onErrorCallback;
+  var commit = ref.commit;
+  var state = ref.state;
+  return source.onSnapshot(function (doc) {
+    commit(VUEXFIRE_OBJECT_VALUE, {
+      type: VUEXFIRE_OBJECT_VALUE,
+      key: key,
+      record: createRecordFromDoc(doc),
+      state: state,
+    }, commitOptions);
+  }, onErrorCallback)
+}
+
+function bind (ref) {
+  var state = ref.state;
+  var commit = ref.commit;
+  var key = ref.key;
+  var source = ref.source;
+  var ref_options = ref.options;
+  var readyCallback = ref_options.readyCallback;
+  var errorCallback = ref_options.errorCallback;
+  var wait = ref_options.wait; if ( wait === void 0 ) wait = true;
+  var includeMetadataChanges = ref_options.includeMetadataChanges; if ( includeMetadataChanges === void 0 ) includeMetadataChanges = true;
+
+  if (!isObject(source)) {
+    throw new Error('VuexFire: invalid Firebase binding source.')
+  }
+  if (!(key in state)) {
+    throw new Error(("VuexFire: cannot bind undefined property '" + key + "'. Define it on the state first."))
+  }
+
+  bindings.delete({ commit: commit, key: key });
+
+  if (readyCallback) {
+    source.get().then(readyCallback);
+  }
+
+  var unsubscriber;
+  if (isFirestoreDoc(source)) {
+    unsubscriber = bindDoc({key: key, source: source, onErrorCallback: errorCallback, commit: commit, state: state, includeMetadataChanges: includeMetadataChanges});
+  } else {
+    unsubscriber = bindCollectionOrQuery({key: key, source: source, onErrorCallback: errorCallback, wait: wait, commit: commit, state: state, includeMetadataChanges: includeMetadataChanges});
+  }
+
+  bindings.add({ commit: commit, key: key, binding: new FirestoreBinding(unsubscriber) });
+}
+
+var commitOptions$1 = { root: true };
 
 function bindAsObject (ref) {
   var key = ref.key;
@@ -166,7 +374,7 @@ function bindAsObject (ref) {
       key: key,
       record: createRecord(snapshot),
       state: state,
-    }, commitOptions);
+    }, commitOptions$1);
   }, cancelCallback);
 
   // return the listeners that have been setup
@@ -189,7 +397,7 @@ function bindAsArray (ref) {
       state: state,
       key: key,
       value: array,
-    }, commitOptions);
+    }, commitOptions$1);
   };
 
   if (!wait) {
@@ -207,7 +415,7 @@ function bindAsArray (ref) {
       index: index,
       array: wait && array,
       record: createRecord(snapshot),
-    }, commitOptions);
+    }, commitOptions$1);
   }, cancelCallback);
 
   var onRemove = source.on('child_removed', function (snapshot) {
@@ -218,7 +426,7 @@ function bindAsArray (ref) {
       key: key,
       index: index,
       array: wait && array,
-    }, commitOptions);
+    }, commitOptions$1);
   }, cancelCallback);
 
   var onChange = source.on('child_changed', function (snapshot) {
@@ -230,7 +438,7 @@ function bindAsArray (ref) {
       index: index,
       array: wait && array,
       record: createRecord(snapshot),
-    }, commitOptions);
+    }, commitOptions$1);
   }, cancelCallback);
 
   var onMove = source.on('child_moved', function (snapshot, prevKey) {
@@ -246,7 +454,7 @@ function bindAsArray (ref) {
       newIndex: newIndex,
       array: wait && array,
       record: createRecord(snapshot),
-    }, commitOptions);
+    }, commitOptions$1);
   }, cancelCallback);
 
   // return the listeners that have been setup
@@ -258,10 +466,7 @@ function bindAsArray (ref) {
   }
 }
 
-// Firebase binding
-var bindings = new WeakMap();
-
-function bind (ref) {
+function bind$1 (ref) {
   var state = ref.state;
   var commit = ref.commit;
   var key = ref.key;
@@ -279,18 +484,8 @@ function bind (ref) {
     throw new Error(("VuexFire: cannot bind undefined property '" + key + "'. Define it on the state first."))
   }
   // Unbind if it already exists
-  var binding = bindings.get(commit);
-  if (!binding) {
-    binding = {
-      sources: Object.create(null),
-      listeners: Object.create(null),
-    };
-    bindings.set(commit, binding);
-  }
-  if (key in binding.sources) {
-    unbind({ commit: commit, key: key });
-  }
-  binding.sources[key] = getRef(source);
+  var binding = new RTDBBinding(getRef(source));
+  bindings.add({ commit: commit, key: key, binding: binding });
 
   // Support for SSR
   // We have to listen for the readyCallback first so it
@@ -307,33 +502,18 @@ function bind (ref) {
     listener = bindAsObject({ key: key, source: source, cancelCallback: cancelCallback, commit: commit, state: state });
   }
 
-  binding.listeners[key] = listener;
+  binding.addListeners(listener);
 }
 
-function unbind (ref) {
-  var commit = ref.commit;
-  var key = ref.key;
+var firebaseMutations = {};
 
-  var binding = bindings.get(commit);
-  if (!binding) {
-    binding = {
-      sources: Object.create(null),
-      listeners: Object.create(null),
-    };
-    bindings.set(commit, binding);
-  }
-  if (!(key in binding.sources)) {
-    throw new Error(("VuexFire: cannot unbind '" + key + "' because it wasn't bound."))
-  }
-  var oldSource = binding.sources[key];
-  var oldListeners = binding.listeners[key];
-  for (var event in oldListeners) {
-    oldSource.off(event, oldListeners[event]);
-  }
-  // clean up
-  delete binding.sources[key];
-  delete binding.listeners[key];
-}
+Object.keys(types).forEach(function (key) {
+  // the { commit, state, type, ...payload } syntax is not supported by buble...
+  var type = types[key];
+  firebaseMutations[type] = function (_, context) {
+    mutations[type](context.state, context);
+  };
+});
 
 function firebaseAction (action) {
   return function firebaseEnhancedActionFn (context, payload) {
@@ -343,9 +523,14 @@ function firebaseAction (action) {
     context.bindFirebaseRef = function (key, source, options) {
         if ( options === void 0 ) options = {};
 
+        return bind$1({ state: state, commit: commit, key: key, source: source, options: options });
+    };
+    context.bindFirestoreRef = function (key, source, options) {
+        if ( options === void 0 ) options = {};
+
         return bind({ state: state, commit: commit, key: key, source: source, options: options });
     };
-    context.unbindFirebaseRef = function (key) { return unbind({ commit: commit, key: key }); };
+    context.unbindFirebaseRef = function (key) { return bindings.delete({ commit: commit, key: key }); };
     return action(context, payload)
   }
 }
