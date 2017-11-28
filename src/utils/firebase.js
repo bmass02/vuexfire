@@ -56,7 +56,7 @@ export function createRecord (snapshot) {
  * @return {Object}
  */
 export function createRecordFromDoc (doc) {
-  var data = doc.data()
+  var data = doc.exists ? doc.data() : Object.create(null)
   data['.id'] = doc.id
   return data
 }
