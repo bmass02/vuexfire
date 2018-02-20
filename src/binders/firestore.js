@@ -128,15 +128,15 @@ export function bind ({
 
   bindings.delete({ commit, key })
 
-  if (readyCallback) {
-    source.get().then(readyCallback)
-  }
-
   let unsubscriber
   if (isFirestoreDoc(source)) {
     unsubscriber = bindDoc({key, source, onErrorCallback: errorCallback, commit, state, includeMetadataChanges})
   } else {
     unsubscriber = bindCollectionOrQuery({key, source, onErrorCallback: errorCallback, wait, commit, state, includeMetadataChanges})
+  }
+
+  if (readyCallback) {
+    source.get().then(readyCallback)
   }
 
   bindings.add({ commit, key, binding: new FirestoreBinding(unsubscriber) })
