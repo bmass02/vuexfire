@@ -4,6 +4,7 @@ import {
   bindings,
   FirestoreBinding,
   isObject,
+  callOnceFn,
 } from '../utils/index'
 
 import * as types from '../utils/types'
@@ -13,6 +14,7 @@ const commitOptions = { root: true }
 function bindCollectionOrQuery ({
   key,
   source,
+  onReadyCallback,
   onErrorCallback,
   wait,
   commit,
@@ -86,12 +88,14 @@ function bindCollectionOrQuery ({
         }
       }
     })
+    onReadyCallback(snapshot)
   }, onErrorCallback)
 }
 
 function bindDoc ({
   key,
   source,
+  onReadyCallback,
   onErrorCallback,
   commit,
   state,
@@ -104,6 +108,7 @@ function bindDoc ({
       record: createRecordFromDoc(doc),
       state,
     }, commitOptions)
+    onReadyCallback(doc)
   }, onErrorCallback)
 }
 
@@ -113,8 +118,8 @@ export function bind ({
   key,
   source,
   options: {
-    readyCallback,
-    errorCallback,
+    readyCallback = () => {},
+    errorCallback = () => {},
     wait = true,
     includeMetadataChanges = true,
   },
@@ -128,15 +133,13 @@ export function bind ({
 
   bindings.delete({ commit, key })
 
+  const onReadyCallback = callOnceFn(readyCallback)
+
   let unsubscriber
   if (isFirestoreDoc(source)) {
-    unsubscriber = bindDoc({key, source, onErrorCallback: errorCallback, commit, state, includeMetadataChanges})
+    unsubscriber = bindDoc({key, source, onReadyCallback, onErrorCallback: errorCallback, commit, state, includeMetadataChanges})
   } else {
-    unsubscriber = bindCollectionOrQuery({key, source, onErrorCallback: errorCallback, wait, commit, state, includeMetadataChanges})
-  }
-
-  if (readyCallback) {
-    source.get().then(readyCallback)
+    unsubscriber = bindCollectionOrQuery({key, source, onReadyCallback, onErrorCallback: errorCallback, wait, commit, state, includeMetadataChanges})
   }
 
   bindings.add({ commit, key, binding: new FirestoreBinding(unsubscriber) })

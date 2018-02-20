@@ -22,3 +22,18 @@ export function indexForKey (array, key) {
 export function isObject (val) {
   return Object.prototype.toString.call(val) === '[object Object]'
 }
+
+/**
+ * Create a wrapper function to ensure passed function is called at most once
+ *
+ * @param {*} fn Any function to be called only once
+ */
+export function callOnceFn (fn) {
+  if (typeof fn !== 'function') throw new Error('Must pass a function.')
+
+  let callOnce = (...params) => {
+    fn(...params)
+    callOnce = () => {}
+  }
+  return callOnce
+}
