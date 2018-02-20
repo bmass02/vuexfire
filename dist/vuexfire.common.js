@@ -1,6 +1,6 @@
 /*!
  * vuexfire v2.3.0
- * (c) 2017 Eduardo San Martin Morote
+ * (c) 2018 Eduardo San Martin Morote
  * Released under the MIT License.
  */
 'use strict';
@@ -30,6 +30,24 @@ function indexForKey (array, key) {
  */
 function isObject (val) {
   return Object.prototype.toString.call(val) === '[object Object]'
+}
+
+/**
+ * Create a wrapper function to ensure passed function is called at most once
+ *
+ * @param {*} fn Any function to be called only once
+ */
+function callOnceFn (fn) {
+  if (typeof fn !== 'function') { throw new Error('Must pass a function.') }
+
+  var callOnce = function () {
+    var params = [], len = arguments.length;
+    while ( len-- ) params[ len ] = arguments[ len ];
+
+    fn.apply(void 0, params);
+    callOnce = function () {};
+  };
+  return callOnce
 }
 
 /**
@@ -240,6 +258,7 @@ var commitOptions = { root: true };
 function bindCollectionOrQuery (ref) {
   var key = ref.key;
   var source = ref.source;
+  var onReadyCallback = ref.onReadyCallback;
   var onErrorCallback = ref.onErrorCallback;
   var wait = ref.wait;
   var commit = ref.commit;
@@ -310,12 +329,14 @@ function bindCollectionOrQuery (ref) {
         }
       }
     });
+    onReadyCallback(snapshot);
   }, onErrorCallback)
 }
 
 function bindDoc (ref) {
   var key = ref.key;
   var source = ref.source;
+  var onReadyCallback = ref.onReadyCallback;
   var onErrorCallback = ref.onErrorCallback;
   var commit = ref.commit;
   var state = ref.state;
@@ -326,6 +347,7 @@ function bindDoc (ref) {
       record: createRecordFromDoc(doc),
       state: state,
     }, commitOptions);
+    onReadyCallback(doc);
   }, onErrorCallback)
 }
 
@@ -335,8 +357,8 @@ function bind (ref) {
   var key = ref.key;
   var source = ref.source;
   var ref_options = ref.options;
-  var readyCallback = ref_options.readyCallback;
-  var errorCallback = ref_options.errorCallback;
+  var readyCallback = ref_options.readyCallback; if ( readyCallback === void 0 ) readyCallback = function () {};
+  var errorCallback = ref_options.errorCallback; if ( errorCallback === void 0 ) errorCallback = function () {};
   var wait = ref_options.wait; if ( wait === void 0 ) wait = true;
   var includeMetadataChanges = ref_options.includeMetadataChanges; if ( includeMetadataChanges === void 0 ) includeMetadataChanges = true;
 
@@ -349,15 +371,13 @@ function bind (ref) {
 
   bindings.delete({ commit: commit, key: key });
 
-  if (readyCallback) {
-    source.get().then(readyCallback);
-  }
+  var onReadyCallback = callOnceFn(readyCallback);
 
   var unsubscriber;
   if (isFirestoreDoc(source)) {
-    unsubscriber = bindDoc({key: key, source: source, onErrorCallback: errorCallback, commit: commit, state: state, includeMetadataChanges: includeMetadataChanges});
+    unsubscriber = bindDoc({key: key, source: source, onReadyCallback: onReadyCallback, onErrorCallback: errorCallback, commit: commit, state: state, includeMetadataChanges: includeMetadataChanges});
   } else {
-    unsubscriber = bindCollectionOrQuery({key: key, source: source, onErrorCallback: errorCallback, wait: wait, commit: commit, state: state, includeMetadataChanges: includeMetadataChanges});
+    unsubscriber = bindCollectionOrQuery({key: key, source: source, onReadyCallback: onReadyCallback, onErrorCallback: errorCallback, wait: wait, commit: commit, state: state, includeMetadataChanges: includeMetadataChanges});
   }
 
   bindings.add({ commit: commit, key: key, binding: new FirestoreBinding(unsubscriber) });
