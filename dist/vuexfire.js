@@ -96,6 +96,7 @@ function createRecord (snapshot) {
     ? value
     : { '.value': value };
   res['.key'] = getKey(snapshot);
+  res['.ref'] = getRef(snapshot);
   return res
 }
 
@@ -108,6 +109,7 @@ function createRecord (snapshot) {
 function createRecordFromDoc (doc) {
   var data = doc.exists ? doc.data() : Object.create(null);
   data['.id'] = doc.id;
+  data['.ref'] = doc.ref;
   return data
 }
 
