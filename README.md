@@ -2,8 +2,10 @@
 
 > SSR ready Firebase binding for [Vuex](https://github.com/vuejs/vuex)
 
-Supports only Vue 2, Vuex 2 and Firebase 2/3
+Supports only Vue 2, Vuex 2 and Firebase JavaScript SDK 2/3/4.
 If you need an older version check the `v1` branch: `npm i -D vuexfire@v1`
+
+**If you are looking for a version compatible with Firestore, [it's over here](https://github.com/posva/vuexfire/tree/firestore)**
 
 ## Installation
 
@@ -60,9 +62,10 @@ context, `bindFirebaseRef` and `unbindFirebaseRef`:
 import { firebaseAction } from 'vuexfire'
 
 const setTodosRef = firebaseAction(({ bindFirebaseRef, unbindFirebaseRef }, { ref }) => {
-  // this will unbind any previously bound ref to 'todos'
+  // bunding will automatically unbind any previously bound ref so you
+  // don't need to unbind before binding over an existing bound key
   bindFirebaseRef('todos', ref)
-  // you can unbind it easily too
+  // it is possible to unbind a bound key at any time
   unbindFirebaseRef('todos')
 })
 ```
