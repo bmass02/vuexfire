@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <title>VuexFire Todo App Demo</title>
-    <script src="https://www.gstatic.com/firebasejs/3.7.5/firebase.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/5.3.0/firebase.js"></script>
     <script src="https://unpkg.com/vue/dist/vue.js"></script>
     <script src="https://unpkg.com/vuex/dist/vuex.js"></script>
     <script src="../../dist/vuexfire.js"></script>
@@ -17,9 +17,9 @@
 
     <div id="app">
       <ul>
-        <li v-for="item in items" :key="item['.key']">
+        <li v-for="item in items" :key="item['.id']">
           {{ item.text }}
-          <button @click="removeTodo(item['.key'])">X</button>
+          <button @click="removeTodo(item['.id'])">X</button>
         </li>
       </ul>
       <form @submit.prevent="addTodo">
@@ -36,12 +36,17 @@
     <script>
     /* global Vue, Vuex, firebase, VuexFire */
     var config = {
-      databaseURL: 'https://vuexfire.firebaseio.com',
+      apiKey: "AIzaSyDLzB9l-EhojB4ibze5ryw5Sp-v36_ZElE",
+      authDomain: "testing-out-firestore.firebaseapp.com",
+      databaseURL: "https://testing-out-firestore.firebaseio.com",
+      projectId: "testing-out-firestore",
+      storageBucket: "testing-out-firestore.appspot.com",
+      messagingSenderId: "925460159146"
     }
     var firebaseApp = firebase.initializeApp(config)
-    var db = firebaseApp.database()
-    var itemsRef = db.ref('test')
-    var todosRef = db.ref('test_2')
+    var db = firebaseApp.firestore()
+    var itemsRef = db.collection('test')
+    var todosRef = db.collection('test_2')
 
     var store = new Vuex.Store({
       // VuexFire will check the type of the property to bind as an array or as
@@ -53,8 +58,8 @@
         items: state => state.items,
       },
       actions: {
-        setItemsRef: VuexFire.firebaseAction(({ bindFirebaseRef }, ref) => {
-          bindFirebaseRef('items', ref, { wait: true })
+        setItemsRef: VuexFire.firebaseAction(({ bindFirestoreRef }, ref) => {
+          bindFirestoreRef('items', ref, { wait: true })
         }),
       },
     })
@@ -65,15 +70,16 @@
       computed: Vuex.mapGetters([ 'items' ]),
       data: {
         newTodo: '',
+        source: null,
       },
 
       methods: {
         removeTodo (key) {
-          this.source.child(key).remove()
+          this.source.doc(key).delete()
         },
         addTodo () {
           if (this.newTodo.trim()) {
-            this.source.push({
+            this.source.add({
               text: this.newTodo,
             })
             this.newTodo = ''

@@ -16,6 +16,16 @@ export function getKey (snapshot) {
 }
 
 /**
+ * Tests if the provided value if a FirebaseReference
+ *
+ * @param {FirebaseReference} ref
+ * @return {boolean}
+ */
+export function isFirebaseRef (ref) {
+  return ref.hasOwnProperty('key')
+}
+
+/**
  * Returns the original reference of a Firebase reference or query across SDK
  * versions.
  *
@@ -46,7 +56,7 @@ export function createRecord (snapshot) {
     ? value
     : { '.value': value }
   res['.key'] = getKey(snapshot)
-  res['.ref'] = getRef(snapshot)
+  res['.path'] = toPath(getRef(snapshot))
   return res
 }
 
@@ -59,7 +69,7 @@ export function createRecord (snapshot) {
 export function createRecordFromDoc (doc) {
   var data = doc.exists ? doc.data() : Object.create(null)
   data['.id'] = doc.id
-  data['.ref'] = doc.ref
+  data['.path'] = toPath(doc.ref)
   return data
 }
 
@@ -81,4 +91,40 @@ export function isFirestoreDoc (source) {
  */
 export function isFirestoreCollection (source) {
   return 'doc' in source && typeof source.doc === 'function'
+}
+
+/**
+ * Converts a Firestore DocumentReference to a path (similar to how Firestore stores References)
+ *
+ * @param {DocumentReference|FirebaseReference} source
+ * @return {string}
+ */
+export function toPath (source) {
+  if (!(isFirestoreDoc(source) || isFirebaseRef(source))) {
+    throw new Error('Only Firestore DocumentReferences can be converted to a path.')
+  }
+
+  const getIdent = isFirebaseRef(source) ? getKey : (doc) => doc.id
+
+  const segments = []
+  let stepper = source
+  while (stepper) {
+    segments.unshift(getIdent(stepper))
+    stepper = stepper.parent
+  }
+  return segments.join('/')
+}
+
+/**
+ * Returns the DocumentChanges for the snapshot
+ *
+ * @param {QuerySnapshot} snapshot
+ * @return {DocumentChange[]}
+ */
+export function getDocChanges (snapshot) {
+  if (typeof snapshot.docChanges === 'function') {
+    return snapshot.docChanges()
+  }
+
+  return snapshot.docChanges
 }

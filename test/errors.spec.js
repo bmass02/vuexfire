@@ -21,9 +21,9 @@ test.beforeEach(t => {
       options: null,
     },
     actions: {
-      setup: firebaseAction(({ bindFirebaseRef, unbindFirebaseRef }) => {
+      setup: firebaseAction(({ bindFirebaseRef, unbind }) => {
         t.context.bind = bindFirebaseRef
-        t.context.unbind = unbindFirebaseRef
+        t.context.unbind = unbind
       }),
     },
     mutations: firebaseMutations,

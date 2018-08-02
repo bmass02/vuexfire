@@ -25,14 +25,14 @@ test.beforeEach(async (t) => {
     },
     actions: {
       setItemsRef: firebaseAction(({ bindFirestoreRef }, ref) => {
-        bindFirestoreRef('items', ref)
+        return bindFirestoreRef('items', ref)
       }),
-      unbindItemsRef: firebaseAction(({ unbindFirebaseRef }) => {
-        unbindFirebaseRef('items')
+      unbindItemsRef: firebaseAction(({ unbind }) => {
+        unbind('items')
       }),
       bindsWithCallback: firebaseAction(
         ({ bindFirestoreRef }, { ref, readyCallback, wait = false }) => {
-          bindFirestoreRef('items', ref, { readyCallback, wait })
+          return bindFirestoreRef('items', ref, { readyCallback, wait })
         }
       ),
     },
@@ -49,7 +49,7 @@ test.afterEach(async (t) => {
 })
 
 test('binds an array of documents', async (t) => {
-  t.context.store.dispatch('setItemsRef', t.context.ref)
+  await t.context.store.dispatch('setItemsRef', t.context.ref)
 
   const batch = firebaseApp.firestore().batch()
   batch.set(t.context.ref.doc('first'), { index: 0 })
@@ -73,7 +73,7 @@ test('binds an array of documents', async (t) => {
 })
 
 test('removes records from array', async (t) => {
-  t.context.store.dispatch('setItemsRef', t.context.ref)
+  await t.context.store.dispatch('setItemsRef', t.context.ref)
 
   const batch = firebaseApp.firestore().batch()
   batch.set(t.context.ref.doc('first'), { index: 0 })
@@ -98,7 +98,7 @@ test('removes records from array', async (t) => {
 })
 
 test('maintains order of query', async (t) => {
-  t.context.store.dispatch('setItemsRef', t.context.ref.orderBy('index', 'asc'))
+  await t.context.store.dispatch('setItemsRef', t.context.ref.orderBy('index', 'asc'))
 
   const batch = firebaseApp.firestore().batch()
   batch.set(t.context.ref.doc('first'), { index: 2 })

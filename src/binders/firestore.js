@@ -5,6 +5,7 @@ import {
   FirestoreBinding,
   isObject,
   callOnceFn,
+  getDocChanges,
 } from '../utils/index'
 
 import * as types from '../utils/types'
@@ -39,7 +40,7 @@ function bindCollectionOrQuery ({
   }
 
   return source.onSnapshot((snapshot) => {
-    snapshot.docChanges.forEach((change) => {
+    getDocChanges(snapshot).forEach((change) => {
       switch (change.type) {
         case 'added': {
           commit(types.VUEXFIRE_ARRAY_ADD, {
@@ -101,7 +102,7 @@ function bindDoc ({
   state,
   includeMetadataChanges,
 }) {
-  return source.onSnapshot((doc) => {
+  return source.onSnapshot({ includeMetadataChanges }, (doc) => {
     commit(types.VUEXFIRE_OBJECT_VALUE, {
       type: types.VUEXFIRE_OBJECT_VALUE,
       key,
@@ -118,29 +119,29 @@ export function bind ({
   key,
   source,
   options: {
-    readyCallback = () => {},
-    errorCallback = () => {},
     wait = true,
-    includeMetadataChanges = true,
+    includeMetadataChanges = false,
   },
 }) {
-  if (!isObject(source)) {
-    throw new Error('VuexFire: invalid Firebase binding source.')
-  }
-  if (!(key in state)) {
-    throw new Error(`VuexFire: cannot bind undefined property '${key}'. Define it on the state first.`)
-  }
+  return new Promise((resolve, reject) => {
+    if (!isObject(source)) {
+      throw new Error('VuexFire: invalid Firebase binding source.')
+    }
+    if (!(key in state)) {
+      throw new Error(`VuexFire: cannot bind undefined property '${key}'. Define it on the state first.`)
+    }
 
-  bindings.delete({ commit, key })
+    bindings.delete({ commit, key })
 
-  const onReadyCallback = callOnceFn(readyCallback)
+    const onReadyCallback = callOnceFn(resolve)
 
-  let unsubscriber
-  if (isFirestoreDoc(source)) {
-    unsubscriber = bindDoc({key, source, onReadyCallback, onErrorCallback: errorCallback, commit, state, includeMetadataChanges})
-  } else {
-    unsubscriber = bindCollectionOrQuery({key, source, onReadyCallback, onErrorCallback: errorCallback, wait, commit, state, includeMetadataChanges})
-  }
+    let unsubscriber
+    if (isFirestoreDoc(source)) {
+      unsubscriber = bindDoc({key, source, onReadyCallback, onErrorCallback: reject, commit, state, includeMetadataChanges})
+    } else {
+      unsubscriber = bindCollectionOrQuery({key, source, onReadyCallback, onErrorCallback: reject, wait, commit, state, includeMetadataChanges})
+    }
 
-  bindings.add({ commit, key, binding: new FirestoreBinding(unsubscriber) })
+    bindings.add({ commit, key, binding: new FirestoreBinding(unsubscriber) })
+  })
 }

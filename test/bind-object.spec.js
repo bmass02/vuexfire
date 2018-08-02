@@ -27,8 +27,8 @@ test.beforeEach(t => {
       setOptionsRef: firebaseAction(({ bindFirebaseRef }, ref) => {
         bindFirebaseRef('options', ref)
       }),
-      unbindOptionsRef: firebaseAction(({ unbindFirebaseRef }) => {
-        unbindFirebaseRef('options')
+      unbindOptionsRef: firebaseAction(({ unbind }) => {
+        unbind('options')
       }),
     },
     mutations: firebaseMutations,

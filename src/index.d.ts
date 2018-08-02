@@ -9,16 +9,6 @@ export declare namespace VuexFire {
         cancelCallback?: Function;
 
         /**
-         * Callback called once the data has been loaded. Useful for SSR
-         */
-        readyCallback?: ((a: firebase.database.DataSnapshot, b?: string | undefined) => any);
-
-        /**
-         * Callback called when there is an error loading the data. Useful for SSR
-         */
-        errorCallback?: (error: firebase.FirebaseError) => void;
-
-        /**
          * (Arrays only) Should Vuexfire wait for the whole array to be populated. Defaults to true
          */
         wait?: boolean;
@@ -40,12 +30,13 @@ export declare namespace VuexFire {
         /**
          * Binds a Firestore Reference to a property in the state. If there was already another reference bound to the same property, it unbinds it first.
          */
-        bindFirestoreRef: (key: string, source: firebase.firestore.DocumentReference | firebase.firestore.CollectionReference | firebase.firestore.Query, options?: FirestoreBindOptions) => void;
+        bindFirestoreRef: (key: string, source: firebase.firestore.CollectionReference | firebase.firestore.Query, options?: FirestoreBindOptions) => Promise<firebase.firestore.QuerySnapshot>;
+        bindFirestoreRef: (key: string, source: firebase.firestore.DocumentReference, options?: FirestoreBindOptions) => Promise<firebase.firestore.DocumentSnapshot>;
 
         /**
          * Unbinds a bound firebase reference to a given property in the state.
          */
-        unbindFirebaseRef: (key: string) => void;
+        unbind: (key: string) => void;
     }
 }
 export declare function firebaseAction<S, R>(action: (context: VuexFire.ActionContext<S, R>, payload: any) => any): (context: Vuex.ActionContext<S, R>, payload: any) => any;

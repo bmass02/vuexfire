@@ -35,7 +35,7 @@ function bindAsObject ({
 function bindAsArray ({
   key,
   source,
-  cancelCallback,
+  onCancel,
   wait,
   commit,
   state,
@@ -67,7 +67,7 @@ function bindAsArray ({
       array: wait && array,
       record: createRecord(snapshot),
     }, commitOptions)
-  }, cancelCallback)
+  }, onCancel)
 
   const onRemove = source.on('child_removed', function (snapshot) {
     const index = indexForKey(array, getKey(snapshot))
@@ -78,7 +78,7 @@ function bindAsArray ({
       index,
       array: wait && array,
     }, commitOptions)
-  }, cancelCallback)
+  }, onCancel)
 
   const onChange = source.on('child_changed', function (snapshot) {
     const index = indexForKey(array, getKey(snapshot))
@@ -90,7 +90,7 @@ function bindAsArray ({
       array: wait && array,
       record: createRecord(snapshot),
     }, commitOptions)
-  }, cancelCallback)
+  }, onCancel)
 
   const onMove = source.on('child_moved', function (snapshot, prevKey) {
     const index = indexForKey(array, getKey(snapshot))
@@ -106,7 +106,7 @@ function bindAsArray ({
       array: wait && array,
       record: createRecord(snapshot),
     }, commitOptions)
-  }, cancelCallback)
+  }, onCancel)
 
   // return the listeners that have been setup
   return {
@@ -123,36 +123,34 @@ export function bind ({
   key,
   source,
   options: {
-    cancelCallback,
-    readyCallback,
-    errorCallback,
+    onCancel,
     wait = true,
   },
 }) {
-  if (!isObject(source)) {
-    throw new Error('VuexFire: invalid Firebase binding source.')
-  }
-  if (!(key in state)) {
-    throw new Error(`VuexFire: cannot bind undefined property '${key}'. Define it on the state first.`)
-  }
-  // Unbind if it already exists
-  let binding = new RTDBBinding(getRef(source))
-  bindings.add({ commit, key, binding })
+  return new Promise((resolve, reject) => {
+    if (!isObject(source)) {
+      throw new Error('VuexFire: invalid Firebase binding source.')
+    }
+    if (!(key in state)) {
+      throw new Error(`VuexFire: cannot bind undefined property '${key}'. Define it on the state first.`)
+    }
+    // Unbind if it already exists
+    let binding = new RTDBBinding(getRef(source))
+    bindings.add({ commit, key, binding })
 
-  // Support for SSR
-  // We have to listen for the readyCallback first so it
-  // gets called after the initializeArray callback
-  if (readyCallback || errorCallback) {
-    source.once('value', readyCallback, errorCallback)
-  }
+    // Support for SSR
+    // We have to listen for the readyCallback first so it
+    // gets called after the initializeArray callback
+    source.once('value', resolve, reject)
 
-  // Automatically detects if it should be bound as an array or as an object
-  let listener
-  if (state[key] && 'length' in state[key]) {
-    listener = bindAsArray({ key, source, cancelCallback, wait, commit, state })
-  } else {
-    listener = bindAsObject({ key, source, cancelCallback, commit, state })
-  }
+    // Automatically detects if it should be bound as an array or as an object
+    let listener
+    if (state[key] && 'length' in state[key]) {
+      listener = bindAsArray({ key, source, onCancel, wait, commit, state })
+    } else {
+      listener = bindAsObject({ key, source, onCancel, commit, state })
+    }
 
-  binding.addListeners(listener)
+    binding.addListeners(listener)
+  })
 }

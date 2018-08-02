@@ -24,14 +24,14 @@ test.beforeEach(async (t) => {
     },
     actions: {
       setItemsRef: firebaseAction(({ bindFirebaseRef }, ref) => {
-        bindFirebaseRef('items', ref)
+        return bindFirebaseRef('items', ref)
       }),
-      unbindItemsRef: firebaseAction(({ unbindFirebaseRef }) => {
-        unbindFirebaseRef('items')
+      unbindItemsRef: firebaseAction(({ unbind }) => {
+        unbind('items')
       }),
       bindsWithCallback: firebaseAction(
-        ({ bindFirebaseRef }, { ref, readyCallback, wait = false }) => {
-          bindFirebaseRef('items', ref, { readyCallback, wait })
+        ({ bindFirebaseRef }, { ref, wait = false }) => {
+          return bindFirebaseRef('items', ref, { wait })
         }
       ),
     },

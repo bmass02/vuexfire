@@ -25,7 +25,7 @@ exports.createFirebaseApp = function createFirebaseApp () {
   })
   const firestore = new Firestore({
     projectId: 'testing-out-firestore',
-    keyFileName: '/Users/btmass02/Downloads/Testing out firestore-7a492223eb09.json',
+    keyFileName: '~/.firebase/testing-out-firestore.json',
   })
   _firebase.firestore = function () {
     return firestore

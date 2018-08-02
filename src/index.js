@@ -26,7 +26,7 @@ export function firebaseAction (action) {
       RTDB.bind({ state, commit, key, source, options })
     context.bindFirestoreRef = (key, source, options = {}) =>
       Firestore.bind({ state, commit, key, source, options })
-    context.unbindFirebaseRef = (key) =>
+    context.unbind = (key) =>
       bindings.delete({ commit, key })
     return action(context, payload)
   }

@@ -21,13 +21,13 @@ test.beforeEach(t => {
     },
     actions: {
       bindItemsRef: firebaseAction(({ bindFirebaseRef }, { ref, wait }) => {
-        bindFirebaseRef('items', ref, { wait })
+        return bindFirebaseRef('items', ref, { wait })
       }),
       setItemsRef: firebaseAction(({ bindFirebaseRef }, ref) => {
-        bindFirebaseRef('items', ref)
+        return bindFirebaseRef('items', ref)
       }),
-      unbindItemsRef: firebaseAction(({ unbindFirebaseRef }) => {
-        unbindFirebaseRef('items')
+      unbindItemsRef: firebaseAction(({ unbind }) => {
+        return unbind('items')
       }),
     },
     mutations: firebaseMutations,
