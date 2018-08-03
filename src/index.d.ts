@@ -25,7 +25,7 @@ export declare namespace VuexFire {
         /**
          * Binds a Firebase Reference to a property in the state. If there was already another reference bound to the same property, it unbinds it first.
          */
-        bindFirebaseRef: (key: string, source: firebase.database.Reference | firebase.database.Query, options?: BindOptions) => void;
+        bindFirebaseRef: (key: string, source: firebase.database.Reference | firebase.database.Query, options?: BindOptions) => Promise<firebase.database.DataSnapshot>;
 
         /**
          * Binds a Firestore Reference to a property in the state. If there was already another reference bound to the same property, it unbinds it first.
