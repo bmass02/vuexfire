@@ -94,5 +94,5 @@
     "vuex": "^3.0.0",
     "yarn-or-npm": "^2.0.4"
   },
-  "types": "src/index.d.ts"
+  "types": "types/index.d.ts"
 }
