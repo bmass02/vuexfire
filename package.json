@@ -7,8 +7,10 @@
   "unpkg": "dist/vuexfire.js",
   "browser": "dist/vuexfire.js",
   "files": [
-    "dist",
-    "src"
+    "dist/**",
+    "types/**",
+    "LICENSE",
+    "README.md"
   ],
   "scripts": {
     "lint": "eslint --color --ext=js,html src test examples build",
